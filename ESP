@@ -1,0 +1,102 @@
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local ESP_ENABLED = true
+
+local function removeESP(character)
+    if character and character:FindFirstChild("Rig") then
+        for _, part in ipairs(character.Rig:GetChildren()) do
+            if part:IsA("BasePart") then
+                local box = part:FindFirstChild("BoxHandleAdornment")
+                if box then
+                    box:Destroy()
+                end
+                local highlight = part:FindFirstChildOfClass("Highlight")
+                if highlight then
+                    highlight:Destroy()
+                end
+            end
+        end
+    end
+end
+
+local function applyESP(player)
+    if player == LocalPlayer or not ESP_ENABLED then
+        return
+    end
+    
+    local character = player.Character
+    if character and character:FindFirstChild("Rig") then
+        if character:FindFirstChild("Ghost") or character.Rig:FindFirstChild("Revolver") then
+            removeESP(character)
+            return
+        end
+        
+        local espColor = LocalPlayer:IsFriendsWith(player.UserId) and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+
+        for _, part in ipairs(character.Rig:GetChildren()) do
+            if part:IsA("BasePart") then
+                local box = part:FindFirstChild("BoxHandleAdornment")
+                if not box then
+                    box = Instance.new("BoxHandleAdornment")
+                    box.Parent = part
+                    box.Adornee = part
+                    box.Size = part.Size + Vector3.new(0.1, 0.1, 0.1)
+                    box.AlwaysOnTop = true
+                    box.Transparency = 0.5
+                end
+                box.Color3 = espColor
+
+                local highlight = part:FindFirstChildOfClass("Highlight")
+                if not highlight then
+                    highlight = Instance.new("Highlight")
+                    highlight.Parent = part
+                    highlight.Adornee = part
+                    highlight.FillTransparency = 0.5
+                    highlight.OutlineTransparency = 0.5
+                end
+                highlight.FillColor = espColor
+                highlight.OutlineColor = espColor
+            end
+        end
+    end
+end
+
+local function updateESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if not ESP_ENABLED then
+            if player.Character then
+                removeESP(player.Character)
+            end
+        else
+            applyESP(player)
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if gameProcessedEvent then return end
+    if input.KeyCode == Enum.KeyCode.RightControl then
+        ESP_ENABLED = not ESP_ENABLED
+        updateESP()
+    end
+end)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        applyESP(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if player.Character then
+        removeESP(player.Character)
+    end
+end)
+
+updateESP()
+game:GetService("RunService").Heartbeat:Connect(function()
+    updateESP()
+end)
